@@ -1,0 +1,10 @@
+<lcgdict>
+  <class name="mu2e::KalSeedCollectionCollection"/>
+  <class name="art::Wrapper<mu2e::KalSeedCollectionCollection>"/>
+  <class name="std::vector<mu2e::TrkInfo>"/>
+  <class name="std::vector<std::vector<mu2e::TrkInfo>>"/>
+  <class name="std::vector<std::vector<std::vector<mu2e::TrkInfo>>>"/>
+  <class name="std::vector<mu2e::TrkSegInfo>"/>
+  <class name="std::vector<std::vector<std::vector<mu2e::TrkSegInfo>>>"/>
+  <class name="std::vector<std::vector<std::vector<std::vector<mu2e::TrkSegInfo>>>>"/>
+</lcgdict>
