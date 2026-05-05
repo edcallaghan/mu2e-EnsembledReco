@@ -34,7 +34,7 @@
 #include "Offline/GeometryService/inc/GeomHandle.hh"
 #include "Offline/GlobalConstantsService/inc/GlobalConstantsHandle.hh"
 #include "Offline/GlobalConstantsService/inc/ParticleDataList.hh"
-#include "Offline/KinKalGeom/inc/SurfaceMap.hh"
+#include "Offline/KinKalGeom/inc/KinKalGeom.hh"
 #include "Offline/Mu2eKinKal/inc/ExtrapolateToZ.hh"
 #include "Offline/Mu2eKinKal/inc/KKBField.hh"
 #include "Offline/Mu2eKinKal/inc/KKConstantBField.hh"
@@ -77,10 +77,10 @@ namespace mu2e{
       EnsembledReco(const Parameters&);
 
       void produce(art::Event& event);
-      void sample(Trk&, SurfaceMap::SurfacePairCollection&,
+      void sample(Trk&, KinKalGeom::SurfacePairCollection&,
                   double, bool, bool) const;
       void sample(Trk&, double, double, double) const;
-      void LoopHelixFit_sampleFit(Trk&, SurfaceMap::SurfacePairCollection&,
+      void LoopHelixFit_sampleFit(Trk&, KinKalGeom::SurfacePairCollection&,
                                   double, bool, bool) const;
       void LoopHelixFit_toTrackerEnds(Trk&, double, double, double) const;
 
@@ -157,7 +157,7 @@ namespace mu2e{
     // for track extensions -.-
     auto modset = pset.get<fhicl::ParameterSet>("ModuleSettings");
     auto cctag = modset.get<art::InputTag>("CaloClusterCollection");
-    auto cch = event.getValidHandle<CaloClusterCollection>(cctag);
+    auto cch = event.getHandle<CaloClusterCollection>(cctag);
 
     // field
     GeomHandle<BFieldManager> bfm;
@@ -191,8 +191,8 @@ namespace mu2e{
     for (const auto& id: labels){
       surfaceids.push_back(SurfaceId(id, -1));
     }
-    SurfaceMap::SurfacePairCollection surfaces;
-    SurfaceMap().surfaces(surfaceids, surfaces);
+    KinKalGeom::SurfacePairCollection surfaces;
+    KinKalGeom().surfaces(surfaceids, surfaces);
     */
 
     // auxiliaries
@@ -217,7 +217,7 @@ namespace mu2e{
       const auto kalseed = ksh->at(i);
       const auto& ktrk = kth->at(i);
       const auto& helix = helices.at(i);
-      auto reseed = kkfit.createSeed(ktrk, kalseed.status(), *calo);
+      auto reseed = kkfit.createSeed(ktrk, kalseed.status(), *calo, tracker);
       //auto flag = TrkFitFlag();
       auto flag = kalseed.status();
 
@@ -250,7 +250,7 @@ namespace mu2e{
         );
       }
       this->sample(newtrk, intersection_tolerance, maxdt, btol);
-      auto newseed = kkfit.createSeed(newtrk, flag, *calo);
+      auto newseed = kkfit.createSeed(newtrk, flag, *calo, tracker);
 
       // execute a no-nop fit iteration
 //    auto noop = KinKal::Config();
@@ -268,7 +268,7 @@ namespace mu2e{
       renoop.dwt_ = 1.0;
       newtrk.extend(renoop, empty_hits, empty_xngs);
       this->sample(newtrk, intersection_tolerance, maxdt, btol);
-      auto renewseed = kkfit.createSeed(newtrk, flag, *calo);
+      auto renewseed = kkfit.createSeed(newtrk, flag, *calo, tracker);
 
       (*out)[i].push_back(kalseed);
       (*out)[i].push_back(reseed);
@@ -284,7 +284,7 @@ namespace mu2e{
                                    KinKalAuxiliaries& auxiliaries,
                                    KinKalFittables& fittables){
     // easy ones first
-    fittables.seed = *(track.seedTraj().pieces().front());
+    //fittables.seed = *(track.seedTraj().pieces().front());
     fittables.pdg = seed.particle();
 
     // these require reinterpretation
@@ -333,7 +333,7 @@ namespace mu2e{
   }
 
   void EnsembledReco::sample(Trk& track,
-                             SurfaceMap::SurfacePairCollection& surfaces,
+                             KinKalGeom::SurfacePairCollection& surfaces,
                              double tolerance,
                              bool in_range,
                              bool in_bounds) const{
@@ -343,7 +343,7 @@ namespace mu2e{
 
   // near-direct copy
   void EnsembledReco::LoopHelixFit_sampleFit(Trk& track,
-                              SurfaceMap::SurfacePairCollection& surfaces,
+                              KinKalGeom::SurfacePairCollection& surfaces,
                               double tolerance,
                               bool in_range,
                               bool in_bounds) const{
@@ -410,18 +410,19 @@ namespace mu2e{
     // ejc
     auto& ktrk = track;
     auto intertol_ = spatial_tolerance;
-    auto trkrep = SurfaceMap().tracker();
+    auto kkg = KinKalGeom();
+    auto& trkrep = kkg.tracker();
     auto trackerFront_ = ExtrapolateToZ(maxdt,
                                         field_tolerance,
-                                        trkrep.front().center().Z(),
+                                        trkrep->front().center().Z(),
                                         0);
     auto trackerBack_  = ExtrapolateToZ(maxdt,
                                         field_tolerance,
-                                        trkrep.back().center().Z(),
+                                        trkrep->back().center().Z(),
                                         0);
-    auto trkfrontptr_ = trkrep.frontPtr();
-    auto trkmidptr_ = trkrep.middlePtr();
-    auto trkbackptr_ = trkrep.backPtr();
+    auto trkfrontptr_ = trkrep->frontPtr();
+    auto trkmidptr_ = trkrep->middlePtr();
+    auto trkbackptr_ = trkrep->backPtr();
     // copy from below
     // time direction to reach the bounding surfaces from the active region depends on the z momentum. This calculation assumes the particle doesn't
     // reflect inside the tracker volumei
